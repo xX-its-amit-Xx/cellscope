@@ -1,0 +1,83 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# CellScope backend project metadata and tooling configuration.
+#
+# Runtime dependencies are tracked in ``requirements.txt`` and restated here under
+# ``[project].dependencies`` so the package is installable directly via
+# ``pip install .`` as well as ``pip install -r requirements.txt``. Keep the two
+# in sync (see ``requirements.txt`` for the authoritative comments on version
+# floors). See ``docs/CONTRACT.md`` for the system contract this package targets.
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cellscope-backend"
+version = "0.1.0"
+description = "Self-hostable single-cell RNA-seq browser backend (FastAPI)."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "GPL-3.0-or-later" }
+authors = [{ name = "CellScope contributors" }]
+keywords = ["single-cell", "rna-seq", "anndata", "scanpy", "fastapi", "umap"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: FastAPI",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+
+# Mirrors requirements.txt (the authoritative dependency list). Version floors
+# are chosen for compatibility with Python 3.11 and pydantic v2; upper bounds are
+# intentionally loose and CI resolves/tests the exact pins.
+dependencies = [
+    # Web framework / ASGI
+    "fastapi>=0.110,<1.0",
+    "uvicorn[standard]>=0.27,<1.0",
+    "python-multipart>=0.0.9",
+    # Configuration / validation
+    "pydantic>=2.6,<3.0",
+    "pydantic-settings>=2.2,<3.0",
+    # Single-cell / numerics
+    "anndata>=0.10,<0.12",
+    "scanpy>=1.10,<1.11",
+    "numpy>=1.26,<2.0",
+    "scipy>=1.11,<2.0",
+    "pandas>=2.1,<3.0",
+    "h5py>=3.10,<4.0",
+    # Clustering / embedding
+    "leidenalg>=0.10,<1.0",
+    "igraph>=0.11,<1.0",
+    "umap-learn>=0.5.5,<1.0",
+    "scikit-learn>=1.4,<2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0,<9.0",
+    "httpx>=0.27,<1.0",          # FastAPI TestClient transport
+    "ruff>=0.4,<1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/cellscope/cellscope"
+Repository = "https://github.com/cellscope/cellscope"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

@@ -1,0 +1,4 @@
+# This file keeps the `data/` directory tracked by git while the actual
+# datasets (*.h5ad) are ignored (see /.gitignore). CellScope scans this
+# directory (CELLSCOPE_DATA_DIR, default ./data) for .h5ad files and writes
+# uploads + the auto-generated sample dataset here. Safe to keep empty.

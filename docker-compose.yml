@@ -1,0 +1,66 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# CellScope — single image, single port (8000).
+#
+# Quick start:
+#   docker compose up
+# then open http://localhost:8000 in a browser. On first start, if the data
+# volume contains no .h5ad file, the container auto-generates a small synthetic
+# sample dataset (no network access) and auto-loads it, so you land on a fully
+# browsable embedding immediately. Drop your own .h5ad files into ./data to have
+# them discovered/loaded instead.
+#
+# The image bundles BOTH the built frontend (served by FastAPI StaticFiles) and
+# the FastAPI backend (API under /api), per docs/CONTRACT.md section 1 — there is
+# no separate web server / nginx (see docker/nginx-not-used.md).
+
+services:
+  cellscope:
+    # Build the single multi-stage image. The build CONTEXT is the repository
+    # root (".") because the Dockerfile copies frontend/, backend/ and examples/.
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: cellscope:latest
+    container_name: cellscope
+
+    # Map the container's single port to the host. Override the host side via
+    # CELLSCOPE_PORT (defaults to 8000); the container always listens on 8000.
+    ports:
+      - "${CELLSCOPE_PORT:-8000}:8000"
+
+    # Persist datasets (and the auto-generated sample) on the host. This bind
+    # mount is where uploads land and where .h5ad files are discovered.
+    volumes:
+      - ./data:/data
+
+    # CELLSCOPE_* environment passthrough with sane defaults mirroring
+    # docs/CONTRACT.md section 3. The image already bakes CELLSCOPE_STATIC_DIR,
+    # CELLSCOPE_DATA_DIR and CELLSCOPE_PORT; these are repeated/overridable here.
+    environment:
+      # Server binds inside the container; keep 0.0.0.0 so the published port
+      # is reachable. The container always serves on port 8000 (EXPOSE 8000).
+      CELLSCOPE_HOST: "0.0.0.0"
+      CELLSCOPE_PORT: "8000"
+      # Data directory inside the container (matches the volume mount above).
+      CELLSCOPE_DATA_DIR: "/data"
+      # Path to the built frontend assets baked into the image.
+      CELLSCOPE_STATIC_DIR: "/app/static"
+      # Files at/above this size (MB) open in backed (on-disk) mode.
+      CELLSCOPE_BACKED_THRESHOLD_MB: "${CELLSCOPE_BACKED_THRESHOLD_MB:-500}"
+      # Reject uploads larger than this many MB.
+      CELLSCOPE_MAX_UPLOAD_MB: "${CELLSCOPE_MAX_UPLOAD_MB:-5120}"
+      # Max number of "rest" cells sampled when computing markers.
+      CELLSCOPE_MARKER_REST_CAP: "${CELLSCOPE_MARKER_REST_CAP:-50000}"
+      # Number of cached selections retained (LRU eviction).
+      CELLSCOPE_SELECTION_LRU: "${CELLSCOPE_SELECTION_LRU:-64}"
+      # Allowed CORS origins (comma list). Same-origin in production, so "*"
+      # is a harmless default; tighten if you expose the API cross-origin.
+      CELLSCOPE_CORS_ORIGINS: "${CELLSCOPE_CORS_ORIGINS:-*}"
+      # Optional .h5ad path auto-loaded at startup. Leave empty to let the
+      # entrypoint pick the first dataset found in /data (or the generated
+      # sample). Set this to pin a specific dataset.
+      CELLSCOPE_AUTOLOAD: "${CELLSCOPE_AUTOLOAD:-}"
+
+    # Restart on crashes and across host reboots, but not after an explicit stop.
+    restart: unless-stopped
