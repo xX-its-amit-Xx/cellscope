@@ -236,7 +236,7 @@ export type JobStep =
   | "leiden"
   | "umap"
   | "finalize"
-  | (string & {});
+  | (string & Record<never, never>);
 
 /**
  * Parameters for a `recluster` job (CONTRACT section 5).

@@ -31,10 +31,11 @@ import {
   useMemo,
   useRef,
   useState,
+  type ComponentProps,
   type PointerEvent as ReactPointerEvent,
   type Ref,
 } from 'react';
-import DeckGL from 'deck.gl';
+import DeckGL, { type DeckGLRef } from 'deck.gl';
 import { OrthographicView, type PickingInfo } from '@deck.gl/core';
 import { ScatterplotLayer } from '@deck.gl/layers';
 
@@ -614,15 +615,19 @@ export function EmbeddingViewport(): JSX.Element {
       {hasData && viewState ? (
         <>
           <DeckGL
-            ref={deckRef as unknown as Ref<unknown>}
+            ref={deckRef as unknown as Ref<DeckGLRef<OrthographicView>>}
             views={views}
             viewState={viewState}
             controller={controller}
-            onViewStateChange={onViewStateChange}
+            onViewStateChange={
+              onViewStateChange as unknown as ComponentProps<
+                typeof DeckGL
+              >['onViewStateChange']
+            }
             layers={layers}
             onHover={onHover}
             getCursor={() => (isSelecting ? 'crosshair' : 'grab')}
-            style={{ position: 'absolute', inset: 0 }}
+            style={{ position: 'absolute', inset: '0' }}
           />
 
           {/* Selection overlay: captures the drag gesture while a tool is armed. */}

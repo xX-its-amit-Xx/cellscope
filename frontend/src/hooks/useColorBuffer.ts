@@ -40,7 +40,7 @@ export interface ColorBufferInput {
   colorCodes: Int32Array | null;
   /** `[min, max]` domain for continuous normalization. */
   colorDomain: [number, number] | null;
-  /** Category labels (unused for color but part of the color state for memo keying). */
+  /** Category labels. Accepted for store-shape parity; not read by the buffer (color depends only on codes). */
   categories: string[] | null;
   /** Name of the continuous colormap (e.g. `"viridis"`). */
   colormapName: string;
@@ -86,7 +86,6 @@ export function useColorBuffer(input: ColorBufferInput): Uint8Array {
     colorValues,
     colorCodes,
     colorDomain,
-    categories,
     colormapName,
   } = input;
 
@@ -160,15 +159,14 @@ export function useColorBuffer(input: ColorBufferInput): Uint8Array {
     // `none` (or incomplete state): uniform default gray.
     fillSolid(buf, GRAY_R, GRAY_G, GRAY_B);
     return buf;
-    // `categories` participates so a relabel (same codes, new labels) does not
-    // stale-cache; the color output itself does not depend on label text.
+    // `categories` is intentionally excluded: the color output depends only on
+    // the integer codes, not the label text, so a relabel needs no recompute.
   }, [
     nObs,
     colorKind,
     colorValues,
     colorCodes,
     colorDomain,
-    categories,
     colormapName,
   ]);
 }

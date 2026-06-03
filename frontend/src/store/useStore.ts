@@ -636,8 +636,7 @@ export const useStore = create<Store>((set, get) => {
           const fromInfo = dataset.obs_columns.find(
             (c) => c.name === column,
           )?.categories;
-          const nCategories =
-            result.nCategories ?? (fromInfo !== undefined ? fromInfo.length : 0);
+          const nCategories = result.nCategories ?? fromInfo?.length ?? 0;
           const categories =
             fromInfo ??
             Array.from({ length: nCategories }, (_, i) => String(i));
