@@ -25,8 +25,8 @@ import os
 import threading
 import uuid
 from collections import OrderedDict
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Optional
 
 import anndata as ad
 import numpy as np
@@ -96,7 +96,7 @@ class LoadedDataset:
     """
 
     adata: ad.AnnData
-    path: Optional[str]
+    path: str | None
     backed: bool
     info: DatasetInfo
 
@@ -119,11 +119,11 @@ class ObsResult:
     """
 
     kind: str
-    codes: Optional[np.ndarray] = None
-    values: Optional[np.ndarray] = None
-    categories: Optional[list[str]] = None
-    vmin: Optional[float] = None
-    vmax: Optional[float] = None
+    codes: np.ndarray | None = None
+    values: np.ndarray | None = None
+    categories: list[str] | None = None
+    vmin: float | None = None
+    vmax: float | None = None
 
 
 def _is_categorical_dtype(series: pd.Series) -> bool:
@@ -185,7 +185,7 @@ class AnnDataService:
         """Initialize an empty registry and selection LRU."""
         self._datasets: dict[str, LoadedDataset] = {}
         # selection_id -> int32 indices, capped LRU per CONTRACT section 2.
-        self._selections: "OrderedDict[str, np.ndarray]" = OrderedDict()
+        self._selections: OrderedDict[str, np.ndarray] = OrderedDict()
         self._lock = threading.RLock()
 
     # ------------------------------------------------------------------ #
@@ -321,7 +321,7 @@ class AnnDataService:
     # Embedding                                                          #
     # ------------------------------------------------------------------ #
     def get_embedding(
-        self, dataset_id: str, key: Optional[str]
+        self, dataset_id: str, key: str | None
     ) -> tuple[np.ndarray, tuple[float, float, float, float]]:
         """Return interleaved-xy embedding coordinates and their bounds.
 
@@ -406,7 +406,7 @@ class AnnDataService:
         return hits, total
 
     def get_expression(
-        self, dataset_id: str, gene: str, layer: Optional[str]
+        self, dataset_id: str, gene: str, layer: str | None
     ) -> tuple[np.ndarray, str, float, float]:
         """Read a single gene's expression vector across all cells.
 
@@ -542,8 +542,8 @@ class AnnDataService:
     def resolve_selection(
         self,
         dataset_id: str,
-        selection_id: Optional[str],
-        indices: Optional[list[int]],
+        selection_id: str | None,
+        indices: list[int] | None,
     ) -> np.ndarray:
         """Resolve a selection to a sorted, unique ``int32`` index array.
 
@@ -598,7 +598,7 @@ class AnnDataService:
         dataset_id: str,
         indices: np.ndarray,
         n_markers: int,
-        obs_keys: Optional[list[str]],
+        obs_keys: list[str] | None,
     ) -> SelectionStatsResponse:
         """Compute marker genes and obs summaries for a selection.
 
@@ -828,7 +828,7 @@ class AnnDataService:
         self,
         adata: ad.AnnData,
         sel_idx: np.ndarray,
-        obs_keys: Optional[list[str]],
+        obs_keys: list[str] | None,
     ) -> dict[str, object]:
         """Summarize requested obs columns over the selection.
 
@@ -1013,7 +1013,7 @@ class AnnDataService:
     # Internal helpers                                                   #
     # ------------------------------------------------------------------ #
     def _register(
-        self, adata: ad.AnnData, path: Optional[str], backed: bool
+        self, adata: ad.AnnData, path: str | None, backed: bool
     ) -> DatasetInfo:
         """Build :class:`DatasetInfo`, register the dataset and return the info.
 
@@ -1062,7 +1062,7 @@ class AnnDataService:
         return info
 
     @staticmethod
-    def _pick_default_embedding(embeddings: list[str]) -> Optional[str]:
+    def _pick_default_embedding(embeddings: list[str]) -> str | None:
         """Choose the preferred default embedding key.
 
         Preference order: ``X_umap`` then ``X_tsne`` then ``X_pca`` then the

@@ -98,7 +98,7 @@ async def _run_job(
         send_lock: Lock serializing writes to ``ws``.
     """
     loop = asyncio.get_running_loop()
-    queue: "asyncio.Queue[dict[str, Any] | object]" = asyncio.Queue()
+    queue: asyncio.Queue[dict[str, Any] | object] = asyncio.Queue()
 
     def progress(step: str, frac: float, message: str) -> None:
         """Worker-thread progress callback; thread-safely enqueues a message.
@@ -137,7 +137,7 @@ async def _run_job(
     # Ensure the drain coroutine always terminates: when the worker finishes
     # (success or failure), push the sentinel from whichever thread completes
     # the task's callbacks.
-    def _on_done(_task: "asyncio.Task[Any]") -> None:
+    def _on_done(_task: asyncio.Task[Any]) -> None:
         loop.call_soon_threadsafe(queue.put_nowait, _DRAIN_SENTINEL)
 
     worker_task.add_done_callback(_on_done)

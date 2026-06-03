@@ -16,7 +16,6 @@ import logging
 from fastapi import APIRouter, HTTPException, Query, Response, status
 
 from app import serialization
-from app.models import GeneHit
 from app.services import service
 
 logger = logging.getLogger(__name__)

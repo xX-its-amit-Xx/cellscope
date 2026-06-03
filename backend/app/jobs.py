@@ -89,7 +89,7 @@ class JobManager:
         if capacity < 1:
             raise ValueError("capacity must be >= 1")
         self.capacity = capacity
-        self._jobs: "OrderedDict[str, Job]" = OrderedDict()
+        self._jobs: OrderedDict[str, Job] = OrderedDict()
         self._lock = threading.Lock()
 
     def create(self, job_type: str, dataset_id: str) -> Job:

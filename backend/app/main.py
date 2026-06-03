@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -40,6 +42,39 @@ def _configure_logging() -> None:
         )
 
 
+def _autoload() -> None:
+    """Best-effort auto-load of ``CELLSCOPE_AUTOLOAD`` at startup.
+
+    Failures are logged and swallowed so the server still starts when the
+    configured dataset is missing or invalid.
+    """
+    autoload_path = settings.autoload.strip()
+    if not autoload_path:
+        return
+    try:
+        info = service.load(autoload_path)
+        logger.info(
+            "Autoloaded dataset %s from %s (%d obs x %d vars)",
+            info.dataset_id,
+            autoload_path,
+            info.n_obs,
+            info.n_vars,
+        )
+    except Exception:  # noqa: BLE001 - best-effort, must not block startup
+        logger.exception("Autoload of %s failed", autoload_path)
+
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Application lifespan: run the best-effort autoload on startup.
+
+    Replaces the deprecated ``@app.on_event("startup")`` hook. No shutdown
+    actions are required.
+    """
+    _autoload()
+    yield
+
+
 def create_app() -> FastAPI:
     """Create and configure the CellScope FastAPI application.
 
@@ -58,6 +93,7 @@ def create_app() -> FastAPI:
         title="CellScope",
         version=__version__,
         description="Self-hostable single-cell RNA-seq browser backend.",
+        lifespan=_lifespan,
     )
 
     app.add_middleware(
@@ -83,28 +119,6 @@ def create_app() -> FastAPI:
             A mapping ``{"status": "ok", "version": <package version>}``.
         """
         return {"status": "ok", "version": __version__}
-
-    @app.on_event("startup")
-    def _autoload() -> None:
-        """Best-effort auto-load of ``CELLSCOPE_AUTOLOAD`` at startup.
-
-        Failures are logged and swallowed so the server still starts when the
-        configured dataset is missing or invalid.
-        """
-        autoload_path = settings.autoload.strip()
-        if not autoload_path:
-            return
-        try:
-            info = service.load(autoload_path)
-            logger.info(
-                "Autoloaded dataset %s from %s (%d obs x %d vars)",
-                info.dataset_id,
-                autoload_path,
-                info.n_obs,
-                info.n_vars,
-            )
-        except Exception:  # noqa: BLE001 - best-effort, must not block startup
-            logger.exception("Autoload of %s failed", autoload_path)
 
     _mount_static(app)
     return app
