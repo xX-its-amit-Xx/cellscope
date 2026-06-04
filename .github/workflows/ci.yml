@@ -1,0 +1,103 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# CI for CellScope.
+#
+# Two independent jobs:
+#   * backend  — Python 3.11: ruff lint + pytest. This is the SLOW job: the
+#                heavy scientific stack (anndata / scanpy / numpy / scipy /
+#                igraph, etc.) dominates install time, so it is the long pole
+#                of every run. pip caching softens repeat installs but the cold
+#                cache still takes the bulk of the wall-clock time.
+#   * frontend — Node 20: eslint + production build (tsc && vite build).
+#
+# The jobs do not depend on each other, so they run in parallel.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref to save runner minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (Python 3.11)
+    runs-on: ubuntu-latest
+    # Generous timeout: the scientific dependency install + first-run compile
+    # of native wheels makes this the slow job.
+    timeout-minutes: 30
+    defaults:
+      run:
+        # Run from backend/ so `import app...` resolves and pytest finds tests.
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          # Cache pip downloads keyed on the backend requirements file.
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          # Dev tooling (ruff, pytest) lives in pyproject's optional "dev"
+          # extra; install it when present, otherwise fall back to the bare
+          # tools so lint/test steps always have what they need.
+          if [ -f pyproject.toml ]; then
+            pip install -e ".[dev]" || pip install ruff pytest httpx
+          else
+            pip install ruff pytest
+          fi
+
+      - name: Lint (ruff)
+        # Run against the repo-relative path; cwd is backend/, so target ".".
+        run: ruff check .
+
+      - name: Test (pytest)
+        run: pytest tests
+
+  frontend:
+    name: Frontend (Node 20)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          # No npm caching here: it keys on frontend/package-lock.json, which is
+          # not committed yet. ROADMAP: commit a frontend/package-lock.json, then
+          # re-add `cache: npm` + `cache-dependency-path: frontend/package-lock.json`
+          # and switch the install step back to `npm ci` for reproducible builds.
+
+      - name: Install dependencies
+        # `npm install` (not `npm ci`) because there is no committed lockfile yet;
+        # `npm ci` hard-fails without one. See the ROADMAP note above.
+        run: npm install
+
+      - name: Lint (eslint)
+        run: npm run lint
+
+      - name: Build (tsc && vite build)
+        run: npm run build
